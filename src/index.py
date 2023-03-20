@@ -5,18 +5,8 @@ import os
 
 print("running")
 # pipename should be of the form \\.\pipe\mypipename
-pipe = win32pipe.CreateNamedPipe(
-    os.environ["PIPE_NAME"],
-    win32pipe.PIPE_ACCESS_OUTBOUND,
-    win32pipe.PIPE_TYPE_MESSAGE | win32pipe.PIPE_WAIT,
-    1, 65536, 65536,
-    300,
-    None)
-try:
-    win32pipe.ConnectNamedPipe(pipe, None)
-    print("Connected named pipe")
-    some_data = b'shyam-swaroop'
-    win32file.WriteFile(pipe, some_data)
-    win32file.FlushFileBuffers(pipe)
-finally:
-    win32file.CloseHandle(pipe)
+
+handle = win32file.CreateFile(os.environ["PIPE_NAME"], win32file.GENERIC_READ | win32file.GENERIC_WRITE,
+                              0, None, win32file.OPEN_EXISTING, win32file.FILE_ATTRIBUTE_NORMAL, None)
+
+win32file.WriteFile(handle, b'shyam')
