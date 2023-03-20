@@ -1,41 +1,80 @@
 import net from "net";
-import path from "path";
 import crypto from "crypto";
-import os from "os";
 import { exec } from "child_process";
 
-function generateTempFilename(
-	prefix?: string,
-	suffix?: string,
-	tmpdir?: string
-) {
-	prefix = typeof prefix !== "undefined" ? prefix : "tmp.";
-	suffix = typeof suffix !== "undefined" ? suffix : "";
-	tmpdir = tmpdir ? tmpdir : os.tmpdir();
-	return path.join(
-		tmpdir,
-		prefix + crypto.randomBytes(16).toString("hex") + suffix
-	);
-}
+const PIPE_NAME = "\\\\.\\pipe\\atri" + crypto.randomBytes(4).toString("hex")
+console.log(PIPE_NAME)
 
-const server = net.createServer(function (stream) {
-	stream.on("data", function (c) {
-		console.log("data:", c.toString());
-	});
-	stream.on("end", function () {
-		server.close();
-	});
-});
-
-const tempFile = generateTempFilename("atri-app");
-server.listen(tempFile);
-
+const controller = new AbortController();
+const { signal } = controller;
 exec(
-	"./src/index.py",
-	{ env: { ...process.env, ATRI_APP_TEMPFILENAME: tempFile } },
+	"python3 ./src/index.py > b.txt",
+	{ env: { ...process.env, PIPE_NAME }, signal },
 	(err, stdout, stderr) => {
+		console.log("ran")
 		if (err) {
 			console.log(err);
 		}
+
 	}
 );
+
+let client: net.Socket;
+
+process.on("SIGTERM", ()=>{
+	console.log("term")
+controller.abort()
+if(client)
+client.destroy()
+})
+
+process.on("SIGINT", ()=>{
+	controller.abort()
+	if(client)
+	client.destroy()
+})
+
+process.on("SIGABRT", ()=>{
+	controller.abort();
+})
+
+process.on("SIGKILL", ()=>{
+	controller.abort()
+})
+
+function connect(){
+	return new Promise<void>((res, rej)=>{
+		client = net.connect(PIPE_NAME, function() {
+			console.log('Client: on connection');
+		})
+		
+		client.on('data', function(data) {
+			console.log('Client: on data:', data.toString());
+		});
+		
+		client.on('end', function() {
+			console.log('Client: on end');
+			res()
+		})
+		
+		client.on("close", (hadError)=>{
+			console.log("hadError", hadError)
+		})
+		
+		client.on("error", (err)=>{
+			rej(err)
+		})
+	})
+}
+
+async function main() {
+	connect().then(()=>{}).catch((err)=>{
+		if(err.code === "ENOENT"){
+			main()
+		}
+	})
+}
+
+main()
+
+

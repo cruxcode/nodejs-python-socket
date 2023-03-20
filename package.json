@@ -10,9 +10,11 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
+		"node-ipc": "^11.1.0",
 		"typescript": "^5.0.2"
 	},
 	"devDependencies": {
-		"@types/node": "^18.15.3"
+		"@types/node": "^18.15.3",
+		"@types/node-ipc": "^9.2.0"
 	}
 }
